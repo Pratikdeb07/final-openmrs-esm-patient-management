@@ -31,6 +31,11 @@ const MonthlyWorkloadView: React.FC<MonthlyWorkloadViewProps> = ({
     [dateTime, events],
   );
 
+  const totalCount = useMemo(
+    () => currentData?.services?.reduce((s, { count = 0 }) => s + count, 0) ?? 0,
+    [currentData],
+  );
+
   const maxVisible = layout === 'small-desktop' ? 2 : 4;
 
   const visibleServices = useMemo(() => {
@@ -43,8 +48,13 @@ const MonthlyWorkloadView: React.FC<MonthlyWorkloadViewProps> = ({
     return currentData.services.length > maxVisible;
   }, [currentData?.services, showAllServices, maxVisible]);
 
+  /**
+   * Open the day-appointments modal only when there are appointments on this date.
+   * We check totalCount (derived from the calendar summary) so the guard is consistent
+   * with what the user can see on the cell.
+   */
   const handleClick = () => {
-    if (!currentData?.services?.length) return;
+    if (totalCount === 0) return;
     onSelectDate?.(dateTime.format('YYYY-MM-DD'));
   };
 
@@ -64,7 +74,7 @@ const MonthlyWorkloadView: React.FC<MonthlyWorkloadViewProps> = ({
             {currentData?.services ? (
               <div role="button" tabIndex={0}>
                 <User size={16} />
-                <span>{currentData.services.reduce((s, { count = 0 }) => s + count, 0)}</span>
+                <span>{totalCount}</span>
               </div>
             ) : (
               <div />
