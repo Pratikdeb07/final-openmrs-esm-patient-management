@@ -21,6 +21,8 @@ interface DailyCalendarViewProps {
 
 const DailyCalendarView: React.FC<DailyCalendarViewProps> = ({ calendarSystem, calendarSelectedDate }) => {
   const { t } = useTranslation();
+
+  // Format as YYYY-MM-DD in local time — matches the format useAppointmentsByDate expects
   const isoDate = calendarSelectedDate.format('YYYY-MM-DD');
   const { appointments, isLoading } = useAppointmentsByDate(isoDate);
 
@@ -30,6 +32,20 @@ const DailyCalendarView: React.FC<DailyCalendarViewProps> = ({ calendarSystem, c
     calendarSelectedDate.date(),
   );
   const monthName = calendarSystem.months[cal.month] ?? `Month ${cal.month + 1}`;
+
+  // Only render non-empty hour slots to keep the view compact
+  const hourSlots = useMemo(
+    () =>
+      CALENDAR_HOURS.map((hr) => ({
+        hr,
+        appts: appointments.filter((a) => {
+          const ts = a.startDateTime;
+          if (ts == null) return false;
+          return new Date(ts).getHours() === hr;
+        }),
+      })).filter((slot) => slot.appts.length > 0),
+    [appointments],
+  );
 
   if (isLoading) {
     return (
@@ -52,19 +68,20 @@ const DailyCalendarView: React.FC<DailyCalendarViewProps> = ({ calendarSystem, c
         </p>
       </div>
 
-      {CALENDAR_HOURS.map((hr) => {
-        const slotAppts = appointments.filter((a) => new Date(a.startDateTime).getHours() === hr);
-        return (
-          <div key={hr} className={styles.hourRow}>
-            <div className={styles.hourLabel}>{formatHourLabel(hr)}</div>
-            <div className={styles.hourSlot}>
-              {slotAppts.map((a) => (
-                <DailyAppointmentCard key={a.uuid} appointment={a} />
-              ))}
+      {hourSlots.length === 0 && !isLoading && appointments.length === 0 ? null : (
+        <div>
+          {hourSlots.map(({ hr, appts }) => (
+            <div key={hr} className={styles.hourRow}>
+              <div className={styles.hourLabel}>{formatHourLabel(hr)}</div>
+              <div className={styles.hourSlot}>
+                {appts.map((a) => (
+                  <DailyAppointmentCard key={a.uuid} appointment={a} />
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -76,7 +93,9 @@ const DailyAppointmentCard: React.FC<{ appointment: Appointment }> = ({ appointm
   const sc = STATUS_STYLES[appointment.status] ?? DEFAULT_STATUS_STYLE;
 
   const startTime = useMemo(() => {
-    const d = new Date(appointment.startDateTime);
+    const ts = appointment.startDateTime;
+    if (ts == null) return '—';
+    const d = new Date(ts);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }, [appointment.startDateTime]);
 

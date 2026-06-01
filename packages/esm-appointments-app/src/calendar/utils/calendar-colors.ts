@@ -43,8 +43,12 @@ export function getServiceColor(name: string): string {
   return SERVICE_PALETTE[Math.abs(h) % SERVICE_PALETTE.length];
 }
 
-/** Hours shown in weekly / daily views */
-export const CALENDAR_HOURS = Array.from({ length: 12 }, (_, i) => i + 7);
+/**
+ * Full 24-hour range for weekly / daily views.
+ * Previously only covered 7–18 (7 AM–6 PM), which caused appointments
+ * scheduled outside those hours to silently disappear from the grid.
+ */
+export const CALENDAR_HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 export function formatHourLabel(h: number): string {
   return `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`;
