@@ -178,5 +178,20 @@
   "WalkIn": "Walk In",
   "WED": "WED",
   "week": "Week",
-  "yes": "Yes"
+  "yes": "Yes",
+  "all": "All",
+  "appointmentCount": "{{count}} appointment(s)",
+  "appointmentsTotal": "total",
+  "calendarSystem": "Calendar system",
+  "close": "Close",
+  "daily": "Daily",
+  "dayView": "Day View",
+  "loadingAppointments": "Loading appointments…",
+  "monthly": "Monthly",
+  "noAppointments": "No appointments scheduled",
+  "noAppointmentsFound": "No appointments found",
+  "previous": "Previous",
+  "unknownService": "Unknown Service",
+  "viewMode": "View mode",
+  "weekly": "Weekly"
 }
