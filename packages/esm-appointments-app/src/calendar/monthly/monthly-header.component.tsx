@@ -3,23 +3,25 @@ import { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@carbon/react';
 import { formatDate } from '@openmrs/esm-framework';
-import DaysOfWeekCard from './days-of-week.component';
+import { type CalendarSystem } from '../utils/calendar-systems';
+import { getOrderedDowLabels } from '../utils/calendar-date-helpers';
 import styles from './monthly-header.scss';
-
-const DAYS_IN_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 interface MonthlyHeaderProps {
   calendarSelectedDate: Dayjs;
+  calendarSystem: CalendarSystem;
   onSelectPrevMonth: () => void;
   onSelectNextMonth: () => void;
 }
 
 const MonthlyHeader: React.FC<MonthlyHeaderProps> = ({
   calendarSelectedDate,
+  calendarSystem,
   onSelectPrevMonth,
   onSelectNextMonth,
 }) => {
   const { t } = useTranslation();
+  const dowLabels = getOrderedDowLabels(calendarSystem.key);
 
   return (
     <>
@@ -32,9 +34,13 @@ const MonthlyHeader: React.FC<MonthlyHeaderProps> = ({
           {t('next', 'Next')}
         </Button>
       </div>
+
+      {/* Day-of-week column headers — changes with calendar system */}
       <div className={styles.workLoadCard}>
-        {DAYS_IN_WEEK.map((day) => (
-          <DaysOfWeekCard key={day} dayOfWeek={day} />
+        {dowLabels.map((label, i) => (
+          <div key={i} className={styles.dowCell}>
+            {label}
+          </div>
         ))}
       </div>
     </>
