@@ -1,13 +1,13 @@
 import React from 'react';
 import { vi, describe, it, expect } from 'vitest';
-import dayjs, { type Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentsCalendarView from './appointments-calendar-view.component';
 import { useAppointmentsCalendar } from '../hooks/useAppointmentsCalendar';
+import { useAppointmentSearch } from '../hooks/useAppointmentSearch';
 import { useAppointmentServices } from '../hooks/useAppointmentService';
-import { useMonthlyAppointments } from '../hooks/useMonthlyAppointments';
 import { useProviders } from '../hooks/useProviders';
 
 vi.mock('../hooks/useAppointmentsCalendar', () => ({
@@ -18,8 +18,8 @@ vi.mock('../hooks/useAppointmentsByDate', () => ({
   useAppointmentsByDate: vi.fn().mockReturnValue({ appointments: [], isLoading: false }),
 }));
 
-vi.mock('../hooks/useMonthlyAppointments', () => ({
-  useMonthlyAppointments: vi.fn().mockReturnValue({ appointments: [], isLoading: false, error: undefined }),
+vi.mock('../hooks/useAppointmentSearch', () => ({
+  useAppointmentSearch: vi.fn().mockReturnValue({ appointments: [], isLoading: false, error: undefined }),
 }));
 
 vi.mock('../hooks/useProviders', () => ({
@@ -31,7 +31,7 @@ vi.mock('../hooks/useAppointmentService', () => ({
 }));
 
 const mockUseAppointmentsCalendar = vi.mocked(useAppointmentsCalendar);
-const mockUseMonthlyAppointments = vi.mocked(useMonthlyAppointments);
+const mockUseAppointmentSearch = vi.mocked(useAppointmentSearch);
 const mockUseProviders = vi.mocked(useProviders);
 const mockUseAppointmentServices = vi.mocked(useAppointmentServices);
 
@@ -41,11 +41,6 @@ function renderCalendar() {
       <AppointmentsCalendarView />
     </BrowserRouter>,
   );
-}
-
-function latestRequestedDate(): Dayjs {
-  const lastCall = mockUseMonthlyAppointments.mock.calls.at(-1);
-  return dayjs(lastCall?.[0] as Dayjs);
 }
 
 const svc = (name: string, uuid: string) => ({
@@ -88,38 +83,11 @@ describe('Appointment calendar view', () => {
     expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
   });
 
-  it('advances the calendar by one month when Next is clicked', async () => {
-    const user = userEvent.setup();
-    renderCalendar();
-    const initialDate = latestRequestedDate();
-
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
-    expect(latestRequestedDate().diff(initialDate, 'month')).toBe(1);
-  });
-
-  it('rewinds the calendar by one month when Prev is clicked', async () => {
-    const user = userEvent.setup();
-    renderCalendar();
-    const initialDate = latestRequestedDate();
-
-    await user.click(screen.getByRole('button', { name: /previous/i }));
-
-    expect(initialDate.diff(latestRequestedDate(), 'month')).toBe(1);
-  });
-
   it('renders the Monthly and Daily view switcher', () => {
     renderCalendar();
     expect(screen.getByRole('tab', { name: /monthly/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /daily/i })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /weekly/i })).not.toBeInTheDocument();
-  });
-
-  it('defaults to monthly period on initial render', () => {
-    renderCalendar();
-    expect(mockUseMonthlyAppointments.mock.calls.at(-1)?.[0]).toBeTruthy();
-    expect(mockUseAppointmentsCalendar.mock.calls.at(-1)?.[0]).not.toBeNull();
-    expect(typeof mockUseAppointmentsCalendar.mock.calls.at(-1)?.[0]).toBe('string');
   });
 
   it('switches to daily period when Daily tab is clicked', async () => {
@@ -132,59 +100,9 @@ describe('Appointment calendar view', () => {
     expect(lastCall?.[1]).toBe('daily');
   });
 
-  it('advances by 1 day when Next is clicked in daily mode', async () => {
-    const user = userEvent.setup();
-    renderCalendar();
-
-    const dateBeforeNav = latestRequestedDate();
-
-    await user.click(screen.getByRole('tab', { name: /daily/i }));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-    await user.click(screen.getByRole('tab', { name: /monthly/i }));
-
-    expect(latestRequestedDate().diff(dateBeforeNav, 'day')).toBe(1);
-  });
-
-  it('rewinds by 1 day when Prev is clicked in daily mode', async () => {
-    const user = userEvent.setup();
-    renderCalendar();
-
-    const dateBeforeNav = latestRequestedDate();
-
-    await user.click(screen.getByRole('tab', { name: /daily/i }));
-    await user.click(screen.getByRole('button', { name: /previous/i }));
-    await user.click(screen.getByRole('tab', { name: /monthly/i }));
-
-    expect(dateBeforeNav.diff(latestRequestedDate(), 'day')).toBe(1);
-  });
-
   it('renders the Today button', () => {
     renderCalendar();
     expect(screen.getByRole('button', { name: /today/i })).toBeInTheDocument();
-  });
-
-  it('resets the calendar to today when Today is clicked in monthly mode', async () => {
-    const user = userEvent.setup();
-    renderCalendar();
-
-    await user.click(screen.getByRole('button', { name: /next/i }));
-    expect(latestRequestedDate().isSame(dayjs(), 'month')).toBe(false);
-
-    await user.click(screen.getByRole('button', { name: /today/i }));
-
-    expect(latestRequestedDate().isSame(dayjs(), 'day')).toBe(true);
-  });
-
-  it('resets the calendar to today when Today is clicked in daily mode', async () => {
-    const user = userEvent.setup();
-    renderCalendar();
-
-    await user.click(screen.getByRole('tab', { name: /daily/i }));
-    await user.click(screen.getByRole('button', { name: /next/i }));
-
-    await user.click(screen.getByRole('button', { name: /today/i }));
-
-    expect(latestRequestedDate().isSame(dayjs(), 'day')).toBe(true);
   });
 
   it('displays the appointment count for the month', () => {
@@ -204,7 +122,7 @@ describe('Appointment calendar view', () => {
     expect(screen.getByText('1 appointment this month')).toBeInTheDocument();
   });
 
-  it('displays the singular appointment count for a single appointment in daily mode', async () => {
+  it('displays the singular appointment count in daily mode', async () => {
     const user = userEvent.setup();
     mockUseAppointmentsCalendar.mockReturnValue({
       calendarEvents: [
@@ -228,7 +146,7 @@ describe('Appointment calendar view', () => {
     expect(screen.getByText(/^[A-Z][a-z]+ \d{4}$/)).toBeInTheDocument();
   });
 
-  it('opens popup when a day cell with appointments is clicked in monthly mode, then switches to daily view when Open day view is clicked', async () => {
+  it('opens popup when a day cell with appointments is clicked, then switches to daily view', async () => {
     const user = userEvent.setup();
     mockUseAppointmentsCalendar.mockReturnValue({
       calendarEvents: [
@@ -322,7 +240,7 @@ describe('Appointment calendar view', () => {
       isLoading: false,
       error: null,
     });
-    mockUseMonthlyAppointments.mockReturnValue({
+    mockUseAppointmentSearch.mockReturnValue({
       appointments: [
         mockAppointment({ uuid: 'a1', service: svc('Outpatient', 'svc-opd') }),
         mockAppointment({ uuid: 'a2', service: svc('Lab', 'svc-lab') }),

@@ -1,11 +1,10 @@
-import { useMemo } from 'react';
 import useSWR from 'swr';
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import dayjs, { type Dayjs } from 'dayjs';
 import { omrsDateFormat } from '../constants';
 import { type Appointment } from '../types';
 
-async function fetchAllMonthlyAppointments(forDate: Dayjs): Promise<{ data: Array<Appointment> }> {
+async function fetchAllMonthlyAppointments(forDate: Dayjs): Promise<Array<Appointment>> {
   const daysInMonth = forDate.daysInMonth();
   const startOfMonth = forDate.startOf('month');
 
@@ -33,33 +32,29 @@ async function fetchAllMonthlyAppointments(forDate: Dayjs): Promise<{ data: Arra
     }
   });
 
-  return { data: Array.from(uniqueMap.values()) };
+  return Array.from(uniqueMap.values()).sort((a, b) => {
+    const aTime = Number(a.startDateTime) || new Date(a.startDateTime ?? 0).getTime() || 0;
+    const bTime = Number(b.startDateTime) || new Date(b.startDateTime ?? 0).getTime() || 0;
+    return aTime - bTime;
+  });
 }
 
-export const useMonthlyAppointments = (
-  forDate: Dayjs | null,
-): {
-  appointments: Array<Appointment>;
-  isLoading: boolean;
-  error: Error | undefined;
-} => {
+/**
+ * Fetches all appointments for a given month without hitting the backend 50-record search limit.
+ * Pass null forDate to skip fetching (e.g. when no provider/location filter is active).
+ */
+export function useAppointmentSearch(forDate: Dayjs | null) {
   const monthKey = forDate ? forDate.format('YYYY-MM') : null;
 
-  const { data, isLoading, error } = useSWR<{ data: Array<Appointment> }, Error>(
-    monthKey ? ['monthly-appointments', monthKey] : null,
-    () => fetchAllMonthlyAppointments(forDate),
+  const { data, isLoading, error } = useSWR<Array<Appointment>, Error>(
+    monthKey ? ['appointment-search-monthly', monthKey] : null,
+    () => fetchAllMonthlyAppointments(forDate!),
     { errorRetryCount: 2 },
   );
 
-  const appointments = useMemo(
-    () =>
-      [...(data?.data ?? [])].sort((a, b) => {
-        const aTime = Number(a.startDateTime) || new Date(a.startDateTime ?? 0).getTime() || 0;
-        const bTime = Number(b.startDateTime) || new Date(b.startDateTime ?? 0).getTime() || 0;
-        return aTime - bTime;
-      }),
-    [data?.data],
-  );
-
-  return { appointments, isLoading, error };
-};
+  return {
+    appointments: data ?? [],
+    isLoading,
+    error,
+  };
+}
