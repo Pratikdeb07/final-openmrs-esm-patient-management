@@ -2,14 +2,11 @@ import React, { useState, useCallback, useMemo } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useAppointmentsCalendar } from '../hooks/useAppointmentsCalendar';
-import { useAppointmentSearch } from '../hooks/useAppointmentSearch';
 import { useAppointmentServices } from '../hooks/useAppointmentService';
 import { useSelectedDate } from '../hooks/useSelectedDate';
 import { type CalendarViewMode } from '../types';
-import { omrsDateFormat } from '../constants';
 import { buildServiceColorMap } from './utils/calendar-colors';
-import { filterAppointments, aggregateDailyCountsByService } from './utils/calendar-filters';
-import { useCalendarFilters } from './filter/use-calendar-filters';
+import { useCalendarFilters } from '../filter/use-calendar-filters';
 import CalendarPageHeader from './header/calendar-page-header.component';
 import CalendarHeader from './header/calendar-header.component';
 import MonthlyCalendarView from './monthly/monthly-calendar-view.component';
@@ -26,55 +23,15 @@ const AppointmentsCalendarView: React.FC = () => {
   const { serviceTypes } = useAppointmentServices();
   const serviceColorMap = useMemo(() => buildServiceColorMap(serviceTypes), [serviceTypes]);
 
-  // Fast summary path: one GET, returns per-service counts for the entire month
-  const { calendarEvents: summaryEvents } = useAppointmentsCalendar(calendarSelectedDate.toISOString(), viewMode);
+  // Filter state lives in its own folder — calendar is dumb, just renders what it's given
+  const filters = useCalendarFilters();
 
-  // Full-data path: fetched when provider or location filter is active
-  const { appointments: monthlyAppointments } = useAppointmentSearch(
-    viewMode === 'monthly' ? calendarSelectedDate : null,
-  );
-
-  // Filter state and options live here — no filter logic in the calendar view itself
-  const filters = useCalendarFilters(monthlyAppointments);
-
-  const hasProviderOrLocationFilter = filters.providerUuids.length > 0 || filters.locationUuids.length > 0;
-  const hasServiceFilter = filters.serviceUuids.length > 0;
-
-  const filteredSummaryEvents = useMemo(() => {
-    if (!summaryEvents) return [];
-    if (!hasServiceFilter) return summaryEvents;
-    return summaryEvents
-      .map((event) => ({
-        ...event,
-        services: (event.services ?? []).filter((s) => filters.serviceUuids.includes(s.serviceUuid)),
-      }))
-      .filter((event) => event.services.length > 0);
-  }, [summaryEvents, hasServiceFilter, filters.serviceUuids]);
-
-  const filteredMonthlyEvents = useMemo(() => {
-    if (viewMode !== 'monthly' || !hasProviderOrLocationFilter) return null;
-    return aggregateDailyCountsByService(
-      filterAppointments(monthlyAppointments, {
-        serviceUuids: filters.serviceUuids,
-        providerUuids: filters.providerUuids,
-        locationUuids: filters.locationUuids,
-      }),
-    );
-  }, [
-    viewMode,
-    hasProviderOrLocationFilter,
-    monthlyAppointments,
-    filters.serviceUuids,
-    filters.providerUuids,
-    filters.locationUuids,
-  ]);
-
-  const calendarEvents =
-    viewMode === 'monthly'
-      ? hasProviderOrLocationFilter
-        ? filteredMonthlyEvents
-        : filteredSummaryEvents
-      : summaryEvents;
+  // Single request: backend filters by service/provider/location (was 30 requests before)
+  const { calendarEvents } = useAppointmentsCalendar(calendarSelectedDate.toISOString(), viewMode, {
+    serviceUuids: filters.serviceUuids,
+    providerUuids: filters.providerUuids,
+    locationUuids: filters.locationUuids,
+  });
 
   const appointmentCount = useMemo(
     () =>

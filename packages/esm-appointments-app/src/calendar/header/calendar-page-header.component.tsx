@@ -4,10 +4,10 @@ import { Button } from '@carbon/react';
 import { Add } from '@carbon/react/icons';
 import { PageHeader, PageHeaderContent, AppointmentsPictogram } from '@openmrs/esm-framework';
 import { launchCreateAppointmentForm } from '../../helpers/functions';
-import { type CalendarFilterState } from '../filter/use-calendar-filters';
-import ServiceFilter from '../filter/service-filter.component';
-import ProviderFilter from '../filter/provider-filter.component';
-import LocationFilter from '../filter/location-filter.component';
+import { type CalendarFilterState } from '../../filter/use-calendar-filters';
+import ServiceFilter from '../../filter/service-filter.component';
+import ProviderFilter from '../../filter/provider-filter.component';
+import LocationFilter from '../../filter/location-filter.component';
 import styles from './calendar-page-header.scss';
 
 interface CalendarPageHeaderProps {

@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocations, type OpenmrsResource } from '@openmrs/esm-framework';
-import { useAppointmentServices } from '../../hooks/useAppointmentService';
-import { useProviders } from '../../hooks/useProviders';
-import { type Appointment } from '../../types';
-import { extractProviderOptions, extractLocationOptions } from '../utils/calendar-filters';
+import { useAppointmentServices } from '../hooks/useAppointmentService';
+import { useProviders } from '../hooks/useProviders';
+import { type Appointment } from '../types';
+import { extractProviderOptions, extractLocationOptions } from '../calendar/utils/calendar-filters';
 
 export interface FilterOption {
   uuid: string;
@@ -25,10 +25,10 @@ export interface CalendarFilterState {
 
 /**
  * Owns all calendar filter state and builds option lists for service, provider, and location.
- * Accepts the current month's appointments so provider/location options can be enriched
- * from real data in addition to the global API lists.
+ * Appointments param is optional — when provided, provider/location options are enriched
+ * from real data in addition to the global API lists (now optional since backend filters).
  */
-export function useCalendarFilters(appointments: Array<Appointment>): CalendarFilterState {
+export function useCalendarFilters(appointments: Array<Appointment> = []): CalendarFilterState {
   const { serviceTypes } = useAppointmentServices();
   const { providers } = useProviders();
   const locations = useLocations();
@@ -47,7 +47,6 @@ export function useCalendarFilters(appointments: Array<Appointment>): CalendarFi
     (providers ?? []).forEach((p: OpenmrsResource & { person?: OpenmrsResource }) => {
       if (p?.uuid) map.set(p.uuid, p.person?.display ?? p.display ?? p.uuid);
     });
-    // Enrich from actual appointments in case any providers are missing from the global list
     extractProviderOptions(appointments).forEach(({ uuid, label }) => {
       if (!map.has(uuid)) map.set(uuid, label);
     });

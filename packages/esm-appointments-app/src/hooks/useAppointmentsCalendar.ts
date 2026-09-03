@@ -16,9 +16,20 @@ interface AppointmentSummaryResponse {
   appointmentCountMap: Map<string, AppointmentCountMapEntry>;
 }
 
-export const useAppointmentsCalendar = (forDate: string | null, period: string) => {
+export const useAppointmentsCalendar = (
+  forDate: string | null,
+  period: string,
+  filters?: { serviceUuids?: string[]; providerUuids?: string[]; locationUuids?: string[] },
+) => {
   const { startDate, endDate } = evaluateAppointmentCalendarDates(forDate, period);
-  const url = `${restBaseUrl}/appointment/appointmentSummary?startDate=${startDate}&endDate=${endDate}`;
+  let url: string | null = null;
+  if (startDate && endDate) {
+    const params = new URLSearchParams({ startDate, endDate });
+    if (filters?.serviceUuids?.length) params.set('serviceUuids', filters.serviceUuids.join(','));
+    if (filters?.providerUuids?.length) params.set('providerUuids', filters.providerUuids.join(','));
+    if (filters?.locationUuids?.length) params.set('locationUuids', filters.locationUuids.join(','));
+    url = `${restBaseUrl}/appointment/appointmentSummary?${params.toString()}`;
+  }
 
   const { data, error, isLoading } = useSWR<{ data: Array<AppointmentSummaryResponse> }>(
     startDate && endDate ? url : null,
