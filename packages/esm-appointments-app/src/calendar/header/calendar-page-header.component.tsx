@@ -6,8 +6,6 @@ import { PageHeader, PageHeaderContent, AppointmentsPictogram } from '@openmrs/e
 import { launchCreateAppointmentForm } from '../../helpers/functions';
 import { type CalendarFilterState } from '../../filter/use-calendar-filters';
 import ServiceFilter from '../../filter/service-filter.component';
-import ProviderFilter from '../../filter/provider-filter.component';
-import LocationFilter from '../../filter/location-filter.component';
 import styles from './calendar-page-header.scss';
 
 interface CalendarPageHeaderProps {
@@ -17,8 +15,8 @@ interface CalendarPageHeaderProps {
 
 /**
  * Top-level page header for the calendar view.
- * Renders the three filter dropdowns (Service, Provider, Location) and the New Appointment button.
- * All filter state is owned by the parent via useCalendarFilters.
+ * Renders the service filter dropdown and the New Appointment button.
+ * Filter state is owned by the parent via useCalendarFilters.
  */
 const CalendarPageHeader: React.FC<CalendarPageHeaderProps> = ({ filters, serviceColorMap }) => {
   const { t } = useTranslation();
@@ -37,16 +35,6 @@ const CalendarPageHeader: React.FC<CalendarPageHeaderProps> = ({ filters, servic
             options={serviceOptionsWithColor}
             selected={filters.serviceUuids}
             onChange={filters.onServiceChange}
-          />
-          <ProviderFilter
-            options={filters.providerOptions}
-            selected={filters.providerUuids}
-            onChange={filters.onProviderChange}
-          />
-          <LocationFilter
-            options={filters.locationOptions}
-            selected={filters.locationUuids}
-            onChange={filters.onLocationChange}
           />
         </div>
         <Button kind="primary" renderIcon={Add} size="md" onClick={() => launchCreateAppointmentForm(t)}>

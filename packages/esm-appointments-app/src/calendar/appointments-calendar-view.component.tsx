@@ -26,11 +26,9 @@ const AppointmentsCalendarView: React.FC = () => {
   // Filter state lives in its own folder — calendar is dumb, just renders what it's given
   const filters = useCalendarFilters();
 
-  // Single request: backend filters by service/provider/location (was 30 requests before)
+  // Single request: existing backend API returns daily service counts; filtered client-side by service
   const { calendarEvents } = useAppointmentsCalendar(calendarSelectedDate.toISOString(), viewMode, {
     serviceUuids: filters.serviceUuids,
-    providerUuids: filters.providerUuids,
-    locationUuids: filters.locationUuids,
   });
 
   const appointmentCount = useMemo(

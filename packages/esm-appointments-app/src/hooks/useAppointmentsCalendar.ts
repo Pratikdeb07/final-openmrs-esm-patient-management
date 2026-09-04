@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import dayjs from 'dayjs';
 import useSWR from 'swr';
@@ -19,28 +20,29 @@ interface AppointmentSummaryResponse {
 export const useAppointmentsCalendar = (
   forDate: string | null,
   period: string,
-  filters?: { serviceUuids?: string[]; providerUuids?: string[]; locationUuids?: string[] },
+  filters?: { serviceUuids?: string[] },
 ) => {
   const { startDate, endDate } = evaluateAppointmentCalendarDates(forDate, period);
-  let url: string | null = null;
-  if (startDate && endDate) {
-    const params = new URLSearchParams({ startDate, endDate });
-    if (filters?.serviceUuids?.length) params.set('serviceUuids', filters.serviceUuids.join(','));
-    if (filters?.providerUuids?.length) params.set('providerUuids', filters.providerUuids.join(','));
-    if (filters?.locationUuids?.length) params.set('locationUuids', filters.locationUuids.join(','));
-    url = `${restBaseUrl}/appointment/appointmentSummary?${params.toString()}`;
-  }
+  const url =
+    startDate && endDate
+      ? `${restBaseUrl}/appointment/appointmentSummary?startDate=${startDate}&endDate=${endDate}`
+      : null;
 
-  const { data, error, isLoading } = useSWR<{ data: Array<AppointmentSummaryResponse> }>(
-    startDate && endDate ? url : null,
-    openmrsFetch,
-    { errorRetryCount: 2 },
-  );
-  // Transform API response into daily appointment counts grouped by service
-  const results: DailyAppointmentsCountByService[] =
-    data?.data.reduce((acc: DailyAppointmentsCountByService[], service) => {
-      const serviceName = service.appointmentService.name;
+  const { data, error, isLoading } = useSWR<{ data: Array<AppointmentSummaryResponse> }>(url, openmrsFetch, {
+    errorRetryCount: 2,
+  });
+
+  // Transform API response into daily appointment counts grouped by service,
+  // filtered client-side by serviceUuid when service filters are active.
+  const results: DailyAppointmentsCountByService[] = useMemo(() => {
+    if (!data?.data) return [];
+    const activeServiceUuids = filters?.serviceUuids;
+    return data.data.reduce((acc: DailyAppointmentsCountByService[], service) => {
       const serviceUuid = service.appointmentService.uuid;
+      if (activeServiceUuids?.length && !activeServiceUuids.includes(serviceUuid)) {
+        return acc;
+      }
+      const serviceName = service.appointmentService.name;
       Object.entries(service.appointmentCountMap).forEach(([key, value]) => {
         const existingEntry = acc.find((entry) => entry.appointmentDate === key);
         if (existingEntry) {
@@ -53,7 +55,9 @@ export const useAppointmentsCalendar = (
         }
       });
       return acc;
-    }, []) ?? [];
+    }, []);
+  }, [data?.data, filters?.serviceUuids]);
+
   return { isLoading, calendarEvents: results, error };
 };
 

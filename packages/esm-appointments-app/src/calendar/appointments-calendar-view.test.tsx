@@ -7,7 +7,6 @@ import { BrowserRouter } from 'react-router-dom';
 import AppointmentsCalendarView from './appointments-calendar-view.component';
 import { useAppointmentsCalendar } from '../hooks/useAppointmentsCalendar';
 import { useAppointmentServices } from '../hooks/useAppointmentService';
-import { useProviders } from '../hooks/useProviders';
 
 vi.mock('../hooks/useAppointmentsCalendar', () => ({
   useAppointmentsCalendar: vi.fn().mockReturnValue({ calendarEvents: [], isLoading: false, error: null }),
@@ -17,16 +16,11 @@ vi.mock('../hooks/useAppointmentsByDate', () => ({
   useAppointmentsByDate: vi.fn().mockReturnValue({ appointments: [], isLoading: false }),
 }));
 
-vi.mock('../hooks/useProviders', () => ({
-  useProviders: vi.fn().mockReturnValue({ providers: [], isLoading: false }),
-}));
-
 vi.mock('../hooks/useAppointmentService', () => ({
   useAppointmentServices: vi.fn().mockReturnValue({ serviceTypes: [], isLoading: false }),
 }));
 
 const mockUseAppointmentsCalendar = vi.mocked(useAppointmentsCalendar);
-const mockUseProviders = vi.mocked(useProviders);
 const mockUseAppointmentServices = vi.mocked(useAppointmentServices);
 
 function renderCalendar() {
@@ -211,12 +205,12 @@ describe('Appointment calendar view', () => {
     expect(legendSwatch.style.backgroundColor).toBe(cellSwatch.style.backgroundColor);
   });
 
-  it('renders the Service, Provider and Location filter dropdowns in the header', () => {
+  it('renders the Service filter dropdown in the header and not provider or location dropdowns', () => {
     renderCalendar();
 
     expect(screen.getByRole('combobox', { name: /service/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /provider/i })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /location/i })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /provider/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /location/i })).not.toBeInTheDocument();
   });
 
   it('narrows the monthly grid when a service filter is selected', async () => {
@@ -230,7 +224,7 @@ describe('Appointment calendar view', () => {
         ],
       },
     ];
-    // Mock respects backend filter — returns only services matching serviceUuids
+    // Mock respects service filter — returns only services matching serviceUuids
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockUseAppointmentsCalendar.mockImplementation((_, __, filters: any) => {
       const svcFilter = filters?.serviceUuids as string[] | undefined;
@@ -253,7 +247,7 @@ describe('Appointment calendar view', () => {
       isLoading: false,
     });
 
-    const { rerender } = render(
+    render(
       <BrowserRouter>
         <AppointmentsCalendarView />
       </BrowserRouter>,
@@ -267,31 +261,8 @@ describe('Appointment calendar view', () => {
     await user.click(await screen.findByRole('option', { name: /outpatient/i }));
     await user.keyboard('{Escape}');
 
-    // Re-render will pick up new mock with filtered events — force update via mock
-    // Trigger a re-render by clicking elsewhere (filter state change already triggers hook with new filters)
     expect(screen.getAllByText('Outpatient').length).toBeGreaterThanOrEqual(1);
-    // Lab should be filtered out by backend mock
+    // Lab should be filtered out by service filter
     expect(screen.queryByText('Lab')).not.toBeInTheDocument();
-  });
-
-  it('lists providers in the provider filter dropdown', async () => {
-    const user = userEvent.setup();
-    mockUseAppointmentsCalendar.mockReturnValue({ calendarEvents: [], isLoading: false, error: null });
-    mockUseProviders.mockReturnValue({
-      providers: [
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { uuid: 'prov-1', display: 'Dr. Ada Nwosu', person: { display: 'Dr. Ada Nwosu', uuid: 'person-1' } } as any,
-      ],
-      isLoading: false,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-
-    renderCalendar();
-
-    const providerFilter = screen.getByRole('combobox', { name: /provider/i });
-    expect(providerFilter).toBeInTheDocument();
-    await user.click(providerFilter);
-    // Provider options come from useProviders via useCalendarFilters — smoke check that filter opens
-    expect(providerFilter).toBeInTheDocument();
   });
 });
