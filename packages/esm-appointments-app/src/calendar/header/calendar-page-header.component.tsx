@@ -4,39 +4,25 @@ import { Button } from '@carbon/react';
 import { Add } from '@carbon/react/icons';
 import { PageHeader, PageHeaderContent, AppointmentsPictogram } from '@openmrs/esm-framework';
 import { launchCreateAppointmentForm } from '../../helpers/functions';
-import { type CalendarFilterState } from '../../filter/use-calendar-filters';
-import ServiceFilter from '../../filter/service-filter.component';
 import styles from './calendar-page-header.scss';
 
 interface CalendarPageHeaderProps {
-  filters: CalendarFilterState;
-  serviceColorMap: Map<string, string>;
+  filterElement?: React.ReactNode;
 }
 
 /**
- * Top-level page header for the calendar view.
- * Renders the service filter dropdown and the New Appointment button.
- * Filter state is owned by the parent via useCalendarFilters.
+ * Page chrome for the calendar view: title, service filter slot, New appointment button.
+ * Dumb — the filter element is composed by the container outside src/calendar,
+ * so this component never imports from src/filter.
  */
-const CalendarPageHeader: React.FC<CalendarPageHeaderProps> = ({ filters, serviceColorMap }) => {
+const CalendarPageHeader: React.FC<CalendarPageHeaderProps> = ({ filterElement }) => {
   const { t } = useTranslation();
-
-  const serviceOptionsWithColor = filters.serviceOptions.map((o) => ({
-    ...o,
-    color: serviceColorMap.get(o.uuid),
-  }));
 
   return (
     <PageHeader className={styles.header} data-testid="calendar-page-header">
       <PageHeaderContent illustration={<AppointmentsPictogram />} title={t('calendar', 'Calendar')} />
       <div className={styles.actions}>
-        <div className={styles.filters}>
-          <ServiceFilter
-            options={serviceOptionsWithColor}
-            selected={filters.serviceUuids}
-            onChange={filters.onServiceChange}
-          />
-        </div>
+        {filterElement && <div className={styles.filters}>{filterElement}</div>}
         <Button kind="primary" renderIcon={Add} size="md" onClick={() => launchCreateAppointmentForm(t)}>
           {t('newAppointment', 'New appointment')}
         </Button>

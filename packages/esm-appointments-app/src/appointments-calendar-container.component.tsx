@@ -1,34 +1,30 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useTranslation } from 'react-i18next';
-import { useAppointmentsCalendar } from '../hooks/useAppointmentsCalendar';
-import { useAppointmentServices } from '../hooks/useAppointmentService';
-import { useSelectedDate } from '../hooks/useSelectedDate';
-import { type CalendarViewMode } from '../types';
-import { buildServiceColorMap } from './utils/calendar-colors';
-import { useCalendarFilters } from '../filter/use-calendar-filters';
-import CalendarPageHeader from './header/calendar-page-header.component';
-import CalendarHeader from './header/calendar-header.component';
-import MonthlyCalendarView from './monthly/monthly-calendar-view.component';
-import DailyCalendarView from './daily/daily-calendar-view.component';
-import ServicesLegend from './services-legend.component';
-import styles from './appointments-calendar-view-view.scss';
+import { useAppointmentsCalendar } from './hooks/useAppointmentsCalendar';
+import { useSelectedDate } from './hooks/useSelectedDate';
+import { useServiceFilter } from './filter/use-service-filter';
+import ServiceFilter from './filter/service-filter.component';
+import CalendarPageHeader from './calendar/header/calendar-page-header.component';
+import CalendarView from './calendar/calendar-view.component';
+import { buildServiceColorMap } from './calendar/utils/calendar-colors';
+import { type CalendarViewMode } from './types';
+import styles from './calendar/appointments-calendar-view-view.scss';
 
-const AppointmentsCalendarView: React.FC = () => {
-  const { t } = useTranslation();
+/**
+ * Smart container for the calendar page. Owns filter state, date/view state,
+ * and all fetching — the calendar itself only renders what it is given.
+ */
+const AppointmentsCalendarContainer: React.FC = () => {
   const selectedDate = useSelectedDate();
   const [viewMode, setViewMode] = useState<CalendarViewMode>('monthly');
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Dayjs>(dayjs(selectedDate));
 
-  const { serviceTypes } = useAppointmentServices();
+  const { selectedServiceUuids, serviceTypes, serviceOptions, onServiceChange } = useServiceFilter();
   const serviceColorMap = useMemo(() => buildServiceColorMap(serviceTypes), [serviceTypes]);
 
-  // Filter state lives in its own folder — calendar is dumb, just renders what it's given
-  const filters = useCalendarFilters();
-
-  // Single request: existing backend API returns daily service counts; filtered client-side by service
+  // The summary endpoint takes no filter params — the selection is applied client-side.
   const { calendarEvents } = useAppointmentsCalendar(calendarSelectedDate.toISOString(), viewMode, {
-    serviceUuids: filters.serviceUuids,
+    serviceUuids: selectedServiceUuids,
   });
 
   const appointmentCount = useMemo(
@@ -40,7 +36,6 @@ const AppointmentsCalendarView: React.FC = () => {
     [calendarEvents],
   );
 
-  // Derive legend entries from whatever events are currently displayed
   const legendServices = useMemo(() => {
     const map = new Map<string, { uuid: string; name: string }>();
     (calendarEvents ?? []).forEach((event) => {
@@ -53,6 +48,11 @@ const AppointmentsCalendarView: React.FC = () => {
     });
     return Array.from(map.values());
   }, [calendarEvents]);
+
+  const serviceOptionsWithColor = useMemo(
+    () => serviceOptions.map((option) => ({ ...option, color: serviceColorMap.get(option.uuid) })),
+    [serviceOptions, serviceColorMap],
+  );
 
   const handlePrev = useCallback(() => {
     setCalendarSelectedDate((d) => (viewMode === 'monthly' ? d.subtract(1, 'month') : d.subtract(1, 'day')));
@@ -73,30 +73,26 @@ const AppointmentsCalendarView: React.FC = () => {
 
   return (
     <div data-testid="appointments-calendar" className={styles.backgroundColor}>
-      <CalendarPageHeader filters={filters} serviceColorMap={serviceColorMap} />
-      <CalendarHeader
+      <CalendarPageHeader
+        filterElement={
+          <ServiceFilter options={serviceOptionsWithColor} selected={selectedServiceUuids} onChange={onServiceChange} />
+        }
+      />
+      <CalendarView
         viewMode={viewMode}
         calendarSelectedDate={calendarSelectedDate}
+        events={calendarEvents ?? []}
         appointmentCount={appointmentCount}
+        legendServices={legendServices}
+        serviceColorMap={serviceColorMap}
         onViewModeChange={handleViewModeChange}
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
+        onSelectDate={handleSelectDate}
       />
-      {viewMode === 'monthly' && (
-        <MonthlyCalendarView
-          events={calendarEvents ?? []}
-          calendarSelectedDate={calendarSelectedDate}
-          onSelectDate={handleSelectDate}
-          serviceColorMap={serviceColorMap}
-        />
-      )}
-      {viewMode === 'daily' && (
-        <DailyCalendarView calendarSelectedDate={calendarSelectedDate} serviceColorMap={serviceColorMap} />
-      )}
-      <ServicesLegend services={legendServices} serviceColorMap={serviceColorMap} />
     </div>
   );
 };
 
-export default AppointmentsCalendarView;
+export default AppointmentsCalendarContainer;

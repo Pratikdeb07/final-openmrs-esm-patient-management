@@ -4,19 +4,19 @@ import dayjs from 'dayjs';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import AppointmentsCalendarView from './appointments-calendar-view.component';
-import { useAppointmentsCalendar } from '../hooks/useAppointmentsCalendar';
-import { useAppointmentServices } from '../hooks/useAppointmentService';
+import AppointmentsCalendarContainer from './appointments-calendar-container.component';
+import { useAppointmentsCalendar } from './hooks/useAppointmentsCalendar';
+import { useAppointmentServices } from './hooks/useAppointmentService';
 
-vi.mock('../hooks/useAppointmentsCalendar', () => ({
+vi.mock('./hooks/useAppointmentsCalendar', () => ({
   useAppointmentsCalendar: vi.fn().mockReturnValue({ calendarEvents: [], isLoading: false, error: null }),
 }));
 
-vi.mock('../hooks/useAppointmentsByDate', () => ({
+vi.mock('./hooks/useAppointmentsByDate', () => ({
   useAppointmentsByDate: vi.fn().mockReturnValue({ appointments: [], isLoading: false }),
 }));
 
-vi.mock('../hooks/useAppointmentService', () => ({
+vi.mock('./hooks/useAppointmentService', () => ({
   useAppointmentServices: vi.fn().mockReturnValue({ serviceTypes: [], isLoading: false }),
 }));
 
@@ -26,7 +26,7 @@ const mockUseAppointmentServices = vi.mocked(useAppointmentServices);
 function renderCalendar() {
   return render(
     <BrowserRouter>
-      <AppointmentsCalendarView />
+      <AppointmentsCalendarContainer />
     </BrowserRouter>,
   );
 }
@@ -249,7 +249,7 @@ describe('Appointment calendar view', () => {
 
     render(
       <BrowserRouter>
-        <AppointmentsCalendarView />
+        <AppointmentsCalendarContainer />
       </BrowserRouter>,
     );
 

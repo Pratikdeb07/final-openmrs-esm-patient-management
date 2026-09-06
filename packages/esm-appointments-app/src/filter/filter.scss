@@ -1,8 +1,7 @@
 @use '@carbon/colors';
 @use '@carbon/layout';
 
-// Shared styles for all three calendar filter dropdowns (service, provider, location).
-// Applied via the .calendarFilters wrapper in calendar-page-header.scss.
+// Styles for the calendar service filter dropdown.
 
 .filterOptionLabel {
   position: relative;

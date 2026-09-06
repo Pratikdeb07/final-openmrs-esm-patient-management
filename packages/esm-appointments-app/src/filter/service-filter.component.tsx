@@ -1,25 +1,40 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import FilterDropdown from './filter-dropdown.component';
+import { MultiSelect } from '@carbon/react';
 import styles from './filter.scss';
 
-interface ServiceOption {
+export interface ServiceFilterOption {
   uuid: string;
   label: string;
   color?: string;
 }
 
 interface ServiceFilterProps {
-  options: ServiceOption[];
+  options: ServiceFilterOption[];
   selected: string[];
   onChange: (selected: string[]) => void;
 }
 
+type ServiceItem = { id: string; label: string; color?: string };
+
 const ServiceFilter: React.FC<ServiceFilterProps> = ({ options, selected, onChange }) => {
   const { t } = useTranslation();
 
-  const renderItemWithColor = useCallback((item: { id: string; label: string; color?: string }) => {
-    if (!item) return null;
+  const items = useMemo<ServiceItem[]>(
+    () => options.map((option) => ({ id: option.uuid, label: option.label, color: option.color })),
+    [options],
+  );
+  const selectedItems = useMemo(() => items.filter((item) => selected.includes(item.id)), [items, selected]);
+
+  const handleChange = useCallback(
+    ({ selectedItems }: { selectedItems: Array<ServiceItem> }) => onChange(selectedItems.map((item) => item.id)),
+    [onChange],
+  );
+
+  const renderItem = useCallback((item: ServiceItem | null) => {
+    if (!item) {
+      return null;
+    }
     return (
       <span className={styles.filterOptionLabel}>
         {item.color && <span className={styles.serviceColorSwatch} style={{ backgroundColor: item.color }} />}
@@ -29,15 +44,15 @@ const ServiceFilter: React.FC<ServiceFilterProps> = ({ options, selected, onChan
   }, []);
 
   return (
-    <FilterDropdown
+    <MultiSelect
       id="calendar-service-filter"
+      items={items}
+      itemToString={(item) => item?.label ?? ''}
+      itemToElement={renderItem}
       titleText={t('filterByService', 'Service')}
       label={t('allServices', 'All services')}
-      options={options}
-      selected={selected}
-      onChange={onChange}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      itemToElement={renderItemWithColor as any}
+      selectedItems={selectedItems}
+      onChange={handleChange}
     />
   );
 };
